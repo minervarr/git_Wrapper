@@ -62,8 +62,9 @@ static std::string gitCapture(const std::string& cmdline) {
     return trim(out);
 }
 
-// Drop any Co-Authored-By trailer, "Generated with … Claude" line, or robot
-// emoji line the message might carry, so only nava is ever credited.
+// Drop any Co-Authored-By trailer, Claude-Session trailer, "Generated with …
+// Claude" line, or robot emoji line the message might carry, so only nava is
+// ever credited.
 static std::string sanitize(const std::string& msg) {
     std::istringstream in(msg);
     std::string line, out;
@@ -71,6 +72,7 @@ static std::string sanitize(const std::string& msg) {
     while (std::getline(in, line)) {
         std::string low = toLower(trim(line));
         if (low.rfind("co-authored-by:", 0) == 0) continue;
+        if (low.rfind("claude-session:", 0) == 0) continue;
         if (low.find("generated with") != std::string::npos &&
             low.find("claude") != std::string::npos) continue;
         if (line.find("\xF0\x9F\xA4\x96") != std::string::npos) continue;  // robot emoji
@@ -116,15 +118,17 @@ static int commitsAhead(const std::string& dir) {
     return atoi(c.c_str());
 }
 
-// Refuse to push if any not-yet-pushed commit carries a Co-Authored-By trailer
-// (e.g. a commit made with plain `git` outside this wrapper).
+// Refuse to push if any not-yet-pushed commit carries a Co-Authored-By or
+// Claude-Session trailer (e.g. a commit made with plain `git` outside this
+// wrapper).
 static bool verifyNoTrailers(const std::string& dir) {
     std::string pre = ctxPrefix(dir);
     std::string up = gitCapture(pre + "rev-parse --abbrev-ref --symbolic-full-name @{upstream}");
     if (up.empty() || up.find("fatal") != std::string::npos) return true;  // no upstream: nothing to compare
-    std::string body = gitCapture(pre + "log @{upstream}..HEAD --format=%B");
-    if (toLower(body).find("co-authored-by:") != std::string::npos) {
-        fprintf(stderr, "  ! %s has un-pushed commits with a Co-Authored-By trailer.\n",
+    std::string body = toLower(gitCapture(pre + "log @{upstream}..HEAD --format=%B"));
+    if (body.find("co-authored-by:") != std::string::npos ||
+        body.find("claude-session:") != std::string::npos) {
+        fprintf(stderr, "  ! %s has un-pushed commits with a Co-Authored-By or Claude-Session trailer.\n",
                 dir.empty() ? "this repo" : dir.c_str());
         fprintf(stderr, "    Rewrite them before pushing (only nava may appear).\n");
         return false;
