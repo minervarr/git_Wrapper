@@ -1,0 +1,11 @@
+{
+  "name": "git_wrapper",
+  "version": "0.1.0",
+  "description": "An error-proof front-end for `git commit`/`git push`: forces a single commit identity and pushes submodules before their parent.",
+  "language": "C++17",
+  "platforms": ["windows", "linux"],
+  "build": {
+    "windows": "scripts/Build.bat",
+    "linux": "scripts/build.sh"
+  }
+}

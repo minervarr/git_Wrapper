@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-$root  = $PSScriptRoot
-$build = Join-Path $root 'build'
+$root  = Split-Path -Parent $PSScriptRoot
+$build = Join-Path $root 'build/windows'
 $ninja = 'C:\PPProgam\ninja_win\bin\ninja.exe'
 
 # ── Auto-detect vcvars64.bat (which sets up the cl.exe path) ────────────────

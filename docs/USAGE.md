@@ -18,14 +18,17 @@ From the tool's folder:
 
 ```bat
 cd C:\Users\incxiuefb\Documents\Files\clone\git_wrapper
-Build.bat
+scripts\Build.bat
 ```
 
-`Build.bat` runs `build_msvc.ps1` (vswhere → vcvars64 → Ninja → cl) and produces:
+`scripts\Build.bat` runs `scripts\build_msvc.ps1` (vswhere → vcvars64 → Ninja → cl) and produces:
 
 ```
-git_wrapper\build\git_wrapper.exe
+git_wrapper\build\windows\git_wrapper.exe
 ```
+
+On Linux, `./scripts/build.sh` runs the equivalent CMake/Ninja flow and
+produces `build/linux/git_wrapper`.
 
 Requirements: Visual Studio Build Tools with the **Desktop development with C++**
 workload, Ninja at `C:\PPProgam\ninja_win\bin\ninja.exe`, and `git` on `PATH`.
@@ -41,7 +44,7 @@ So you can type `git_wrapper` from any repository, add its build folder to PATH
   Variables…*
 - Under *User variables* select **Path** → *Edit* → *New*, paste:
   ```
-  C:\Users\incxiuefb\Documents\Files\clone\git_wrapper\build
+  C:\Users\incxiuefb\Documents\Files\clone\git_wrapper\build\windows
   ```
 - OK out of all dialogs, then open a **new** terminal.
 
@@ -51,8 +54,8 @@ Verify:
 git_wrapper help
 ```
 
-(Alternatively, just copy `build\git_wrapper.exe` into a folder that is already
-on PATH.)
+(Alternatively, just copy `build\windows\git_wrapper.exe` into a folder that
+is already on PATH.)
 
 ---
 
@@ -181,14 +184,14 @@ safety are handled for you; you don't push the two repos by hand.
 
 ## 8. Changing the identity
 
-The forced name/email are the two constants at the top of `main.cc`:
+The forced name/email are the two constants in `src/config.h`:
 
 ```cpp
 static const char* kName  = "nava";
 static const char* kEmail = "nava@noreply.com";
 ```
 
-Edit them, then rebuild with `Build.bat`.
+Edit them, then rebuild with `scripts\Build.bat`.
 
 ---
 

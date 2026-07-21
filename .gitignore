@@ -32,5 +32,9 @@ local.properties
 .DS_Store
 Thumbs.db
 
+# Compiled git_wrapper binary (built via Build.bat / build.sh into build/)
+/git_wrapper.exe
+/git_wrapper
+
 # Dumb Files
 screenshot.png

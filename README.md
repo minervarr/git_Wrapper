@@ -14,11 +14,15 @@ mistakes that already cost a history rewrite:
 ## Build
 
 ```bat
-Build.bat            :: vswhere -> vcvars64 -> Ninja -> cl, produces build\git_wrapper.exe
+scripts\Build.bat    :: Windows: vswhere -> vcvars64 -> Ninja -> cl, produces build\windows\git_wrapper.exe
 ```
 
-Then put it on PATH (or copy `build\git_wrapper.exe` somewhere on PATH) and run
-it from anywhere inside a repository.
+```bash
+./scripts/build.sh   # Linux: cmake -> ninja, produces build/linux/git_wrapper
+```
+
+Then put the resulting binary on PATH and run it from anywhere inside a
+repository.
 
 ## Usage
 
@@ -28,17 +32,12 @@ git_wrapper push  [--force]               push submodules first, then this repo
 git_wrapper save  "<message>" [--force]   commit, then push
 ```
 
-- `commit`/`save` run `git add -A` first, then commit. If nothing is staged it
-  says so and exits cleanly.
-- `--force` uses `--force-with-lease` (refuses to clobber remote work you
-  haven't fetched) — the safe kind of force, needed e.g. after a history rewrite.
-- `push` skips pinned/detached submodules (third-party deps) and submodules that
-  are already up to date; it aborts *before* touching the parent if a submodule
-  push fails, or if an un-pushed commit still carries a `Co-Authored-By` trailer.
+See [docs/USAGE.md](docs/USAGE.md) for the full command reference (flags,
+exit codes, troubleshooting).
 
 ## Notes
 
-- The identity is the two constants `kName` / `kEmail` at the top of `main.cc`.
+- The identity is the two constants `kName` / `kEmail` in `src/config.h`.
 - Commit messages are passed to git via a temp file, so spaces and shell
   metacharacters (`&`, `%`, quotes, newlines) in the message are always safe.
-# git_Wrapper
+- See [docs/ROADMAP.md](docs/ROADMAP.md) for planned work.
