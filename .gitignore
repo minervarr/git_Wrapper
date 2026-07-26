@@ -36,5 +36,8 @@ Thumbs.db
 /git_wrapper.exe
 /git_wrapper
 
+# scripts/build.sh --share output tarballs
+/dist/
+
 # Dumb Files
 screenshot.png
