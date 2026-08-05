@@ -6,6 +6,17 @@
 #include <cstdio>
 #include <fstream>
 
+// Pushing over HTTPS otherwise prompts for a username/token on every push.
+// `store` matches the user's explicit choice; never overrides a helper
+// they've already configured (e.g. libsecret).
+static void ensureCredentialCaching() {
+    std::string helper = gitCapture("config --global --get credential.helper");
+    if (!helper.empty()) return;
+    if (git({"config", "--global", "credential.helper", "store"}) == 0) {
+        printf("==> configured git to cache credentials (~/.git-credentials)\n");
+    }
+}
+
 int doCommit(const std::string& rawMsg) {
     std::string msg = sanitize(rawMsg);
     if (msg.empty()) {
@@ -82,6 +93,7 @@ static int pushRepo(const std::string& dir, bool force) {
 }
 
 int doPush(bool force) {
+    ensureCredentialCaching();
     fetchRepo("");
     if (!verifyNoTrailers("")) return 3;
 
