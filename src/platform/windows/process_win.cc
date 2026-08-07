@@ -1,6 +1,7 @@
 #include "process.h"
 #include "util.h"
 #include <process.h>
+#include <windows.h>
 #include <cstdio>
 #include <cstdlib>
 
@@ -29,5 +30,5 @@ std::string tempMessageFilePath() {
     if (!tmpdir) tmpdir = getenv("TMP");
     if (!tmpdir) tmpdir = ".";
     return std::string(tmpdir) + "\\gitwrapper_msg_" +
-           std::to_string((long)_getpid()) + ".txt";
+           std::to_string((unsigned long)GetCurrentProcessId()) + ".txt";
 }
