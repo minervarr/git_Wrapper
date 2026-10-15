@@ -6,7 +6,7 @@ project(git_wrapper CXX C)
 # Empty (default) leaves the compiler's generic baseline untouched — this
 # binary is subprocess/IO-bound (spawns git, does no hot-loop compute), so
 # there's no real performance case for this; it exists purely so
-# scripts/build.sh --share can produce per-microarch binaries alongside a
+# scripts/build.sh package can produce per-microarch binaries alongside a
 # portable one, matching the other native projects' build scripts. A v4/zen4
 # binary will SIGILL on a CPU that lacks those extensions, and GCC only
 # recognizes -march=x86-64-v2/v3/v4 from GCC 11+ / Clang 12+.

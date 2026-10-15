@@ -14,12 +14,17 @@ mistakes that already cost a history rewrite:
 ## Build
 
 ```bat
-scripts\Build.bat    :: Windows: vswhere -> vcvars64 -> Ninja -> cl, produces build\windows\git_wrapper.exe
+scripts\Build.bat    :: Windows: vcvars64 -> Ninja -> cl, produces build\windows\git_wrapper.exe
 ```
 
 ```bash
 ./scripts/build.sh   # Linux: cmake -> ninja, produces build/linux/git_wrapper
 ```
+
+Both run `scripts/git_wrapper_builder.pyz`, a standard-library-only Python
+zipapp that drives CMake on either platform. Run it with no arguments for a menu
+(microarchitecture, then build type), or use `package` for universal/v3/v4/zen4
+tarballs in `dist/linux/`. See [scripts/README.md](scripts/README.md).
 
 Then put the resulting binary on PATH and run it from anywhere inside a
 repository.

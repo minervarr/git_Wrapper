@@ -45,5 +45,34 @@ Verified end-to-end with a real `cmake`/`ninja` build (this machine had
 `cmake`/`ninja` installed by this point): `git_wrapper version` prints
 `git_wrapper 0.1.0`, and `scripts/smoke_test.sh` passes.
 
-## Phase 4 — ideas, not committed
+## Phase 4 — done
+Replaced the four shell build scripts (`Build.bat` → `build_msvc.ps1`,
+`build.sh`, `smoke_test.ps1`, `smoke_test.sh`) with one standard-library-only
+Python zipapp, `scripts/git_wrapper_builder.pyz`, built by
+`scripts/build_pyz.py`:
+
+- `scripts/src/git_wrapper_build/` — `cli` (commands + exit codes), `menu`/
+  `prompts` (injectable-reader menu, now available on Windows for the build
+  type), `variants` (universal/v3/v4/zen4 table + `-march` validation),
+  `paths` (repo root, build directories, `manifest.json`), `toolchain`,
+  `msvc` (`vswhere` → `vcvars64` environment import), `builder`, `package`
+  (`tarfile`), `smoke`, `process`, `ui`, `errors`.
+- Commands: menu (no args) / `build [--release|--debug] [--arch NAME]` / `all`
+  / `package` / `smoke`, plus `--dry-run` (prints the cmake lines and needs no
+  toolchain, so it is usable on a bare machine) and `--ninja`.
+- `uv` is the dev toolchain (`pyproject.toml`, `uv.lock`, `.python-version` =
+  3.15); the artifact stays stdlib-only and `requires-python >= 3.12`, so the
+  `.pyz` also runs on an older system Python. `Build.bat`/`build.sh` are now
+  thin shims that prefer `uv` and fall back to `python`.
+- 98 tests (`uv run pytest`) run with no toolchain at all: `test_workflow.py`
+  drives the whole flow against fake `cmake`/`ninja`/`g++` executables that
+  record their arguments and fabricate the binary.
+
+Verified: `uv format --check` and `uv check` clean, the archive's exit codes
+propagate (zipapp's own generated entry point swallowed them — `build_pyz.py`
+writes `__main__.py` itself), `build --dry-run` on this machine (no
+cmake/ninja/g++ installed) prints the expected commands, and `build` fails with
+the single missing-toolchain message.
+
+## Phase 5 — ideas, not committed
 Nothing yet. Add future work here as it comes up.

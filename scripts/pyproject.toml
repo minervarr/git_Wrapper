@@ -1,0 +1,20 @@
+[project]
+name = "git-wrapper-build"
+version = "0.1.0"
+description = "Build, packaging and smoke-test tooling for git_wrapper (stdlib-only runtime)"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+git-wrapper-build = "git_wrapper_build.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

@@ -1,26 +1,49 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 
-:: 1. Check if pwsh (PowerShell Core) is installed, otherwise fallback to standard powershell
-where pwsh >nul 2>nul
-if %errorlevel% neq 0 (
-    set "PS_CMD=powershell"
-) else (
-    set "PS_CMD=pwsh"
-)
+rem Windows entry point for the build tooling. Prefers uv (which can fetch its
+rem own Python), falls back to the py launcher, then plain python. The real
+rem work lives in git_wrapper_builder.pyz, built by build_pyz.py if needed.
 
+where uv >nul 2>nul
+if not errorlevel 1 goto use_uv
+where py >nul 2>nul
+if not errorlevel 1 goto use_py
+where python >nul 2>nul
+if not errorlevel 1 goto use_python
+
+echo [!] Neither uv nor Python was found on PATH.
+echo     Install uv: https://docs.astral.sh/uv/   (or Python 3.12+)
+pause
+exit /b 1
+
+:use_uv
 cls
-echo Running build script using %PS_CMD%...
+echo Running build script using uv...
 echo.
+uv run python build_pyz.py --run %*
+goto check
 
-:: 2. Run the script (Bypass execution policy just in case it's restricted on your machine)
-%PS_CMD% -ExecutionPolicy Bypass -File "build_msvc.ps1"
+:use_py
+cls
+echo Running build script using py...
+echo.
+py build_pyz.py --run %*
+goto check
 
-:: 3. If the script failed, pause so you can read the error before the window closes
-if %errorlevel% neq 0 (
+:use_python
+cls
+echo Running build script using python...
+echo.
+python build_pyz.py --run %*
+goto check
+
+:check
+if errorlevel 1 (
     echo.
     echo [!] Build failed or was interrupted. Press any key to close...
     pause >nul
+    exit /b 1
 )
-
 endlocal

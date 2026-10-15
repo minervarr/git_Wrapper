@@ -14,6 +14,12 @@ You drive it with three verbs: `commit`, `push`, `save`.
 
 ## 1. Build
 
+The build tooling is a standard-library-only Python zipapp,
+`git_wrapper_builder.pyz`, that drives CMake on Windows and Linux. You never
+type a compiler command.
+
+### Windows
+
 From the tool's folder:
 
 ```bat
@@ -21,17 +27,53 @@ cd C:\Users\incxiuefb\Documents\Files\clone\git_wrapper
 scripts\Build.bat
 ```
 
-`scripts\Build.bat` runs `scripts\build_msvc.ps1` (vswhere → vcvars64 → Ninja → cl) and produces:
+`Build.bat` builds `scripts\git_wrapper_builder.pyz` if needed, then runs it,
+which yields:
 
 ```
 git_wrapper\build\windows\git_wrapper.exe
 ```
 
-On Linux, `./scripts/build.sh` runs the equivalent CMake/Ninja flow and
-produces `build/linux/git_wrapper`.
+Ninja is expected at `C:\PPProgam\ninja_win\bin\ninja.exe`. If yours lives
+elsewhere, set `GIT_WRAPPER_NINJA` or pass `--ninja <path>`.
 
-Requirements: Visual Studio Build Tools with the **Desktop development with C++**
-workload, Ninja at `C:\PPProgam\ninja_win\bin\ninja.exe`, and `git` on `PATH`.
+### Linux
+
+```bash
+./scripts/build.sh
+```
+
+Same flow, yielding `build/linux/git_wrapper`.
+
+### Choosing what to build
+
+Run with no arguments from a terminal for a menu — microarchitecture first
+(Universal, Native, Custom `-march`, or All), then build type (Release or
+Debug). The flags are the same answers without the prompts:
+
+```bash
+./scripts/build.sh build --release          # portable baseline
+./scripts/build.sh build --debug --arch v4  # x86-64-v4, Debug
+./scripts/build.sh package                  # universal + v3 + v4 + zen4 tarballs
+./scripts/build.sh build --dry-run          # print the cmake commands, run nothing
+```
+
+Single-variant builds land in `build/linux` (`_debug`, `_native`,
+`_custom-<value>` appended as they apply); `package` writes
+`dist/linux/git_wrapper-linux-{universal,v3,v4,zen4}.tar.gz`. A `v4`/`zen4`
+binary traps (SIGILL) on a CPU without those extensions — build it only for a
+machine you know. `package` and `all` are Linux-only (the variants are
+GCC/Clang flags MSVC does not have), and a Debug build is never packaged.
+
+### Requirements
+
+- Windows: Visual Studio Build Tools with **Desktop development with C++**,
+  plus `git` on `PATH`. `vcvars64.bat` is located through `vswhere`.
+- Linux: `cmake`, `ninja`, and `g++` or `clang++`, plus `git`.
+- `uv` (recommended) or Python 3.12+ to run the builder itself. It can also be
+  invoked directly — `python scripts/git_wrapper_builder.pyz build` — and with
+  `uv` installed, `uv run --directory scripts git-wrapper-build` gives the same
+  menu from the repository root.
 
 ---
 

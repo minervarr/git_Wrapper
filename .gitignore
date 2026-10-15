@@ -15,11 +15,33 @@ local.properties
 **/.externalNativeBuild/
 **/cmake-build-*/
 
+# CMake / Ninja files when configuring outside build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CMakeUserPresets.json
+.ninja_deps
+.ninja_log
+
+# clangd index cache
+.cache/
+
 # Compiled native artifacts
 *.so
 *.o
 *.a
 *.d
+
+# MSVC / Windows build output
+*.obj
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+.vs/
 
 # APKs and bundles
 *.apk
@@ -31,13 +53,32 @@ local.properties
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Editor cruft
+.vscode/
+*.swp
+*.swo
+*~
 
 # Compiled git_wrapper binary (built via Build.bat / build.sh into build/)
 /git_wrapper.exe
 /git_wrapper
 
-# scripts/build.sh --share output tarballs
+# scripts/build.sh package output tarballs
 /dist/
+
+# Python build tooling (scripts/) — uv dev environment and the built zipapp
+__pycache__/
+*.py[oc]
+*.pyz
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.coverage
+htmlcov/
 
 # Dumb Files
 screenshot.png

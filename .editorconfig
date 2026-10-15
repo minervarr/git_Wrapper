@@ -12,7 +12,12 @@ indent_size = 4
 [*.{bat,ps1}]
 end_of_line = crlf
 
-[*.{sh,md,json}]
+[*.{sh,md,json,toml}]
 end_of_line = lf
 indent_style = space
 indent_size = 2
+
+[*.py]
+end_of_line = lf
+indent_style = space
+indent_size = 4
