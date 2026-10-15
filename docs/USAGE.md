@@ -138,6 +138,7 @@ git_wrapper push --force
 - If a submodule push fails, it stops **before** touching the parent.
 - It refuses to push if an un-pushed commit still carries a `Co-Authored-By`
   trailer (e.g. one made with plain `git`), telling you to fix it first.
+- It uses the right ssh key or https token for each remote — see §10.
 
 ### `save` — commit then push in one step
 
@@ -221,6 +222,15 @@ safety are handled for you; you don't push the two repos by hand.
 - **submodule push fails with no `origin`** — give the submodule a remote
   (`git -C <path> remote add origin <url>`), or if it's a third-party dep you
   don't own, you shouldn't be pushing it (it should be pinned/detached).
+- **"several candidate keys … refusing to guess"** — more than one `~/.ssh` key
+  matches. Pick one: `git_wrapper keys add <host/owner> <key>` (or `--key`).
+- **auth still wrong after adding a key** — run `git_wrapper keys whoami`; it
+  prints each remote and the identity chosen (and why). A `core.sshCommand`
+  already set on the repo, or a matching `~/.ssh/config` Host block, wins over
+  automatic detection — remove it there if you want the rules file to decide.
+- **`keys whoami` says "using git/ssh defaults"** — no rule and no unambiguous
+  key were found; either add one (`keys add`) or place a key named after the
+  owner/host in `~/.ssh` (see §10).
 
 ---
 
@@ -243,3 +253,94 @@ Windows' program-spawn layer does not quote arguments, so a commit message with
 spaces or characters like `&`, `%`, or quotes would be mangled if passed on the
 command line. The wrapper writes the (sanitized) message to a temporary file and
 uses `git commit -F`, so any message text is safe.
+
+---
+
+## 10. SSH keys and https tokens per remote
+
+When you have several forges (GitHub, Codeberg, …) and several accounts on the
+same forge, one key is not enough. `push`/`save` pick the identity from the
+remote itself — for the parent repo **and** for every submodule, so a Codeberg
+submodule under a GitHub parent uses its own key. Plain `commit` never needs
+this.
+
+### The rules file
+
+A small, non-secret file at:
+
+- Linux: `~/.config/git_wrapper/credentials.conf` (or `$XDG_CONFIG_HOME`)
+- Windows: `%APPDATA%\git_wrapper\credentials.conf`
+
+Override with `GIT_WRAPPER_CREDENTIALS`. One rule per line:
+
+```
+# <match> <kind> <value>
+github.com/minervarrbara   ssh    ~/.ssh/id_ed25519_bara
+github.com/minervarr       ssh    ~/.ssh/id_ed25519_minervarr
+codeberg.org               ssh    ~/.ssh/id_ed25519_codeberg
+github.com/minervarr       https  tokens
+```
+
+- **match** — `host` or `host/owner`; the more specific `host/owner` wins. `*`
+  is a wildcard (`github.com/*`, `*/minervarr`).
+- **kind** — `ssh` or `https`.
+- **value** — an ssh key path, `tokens` (a token stored in the `0600` file
+  beside the rules), or `env:VAR` (read the token from an environment variable).
+
+The file holds **references**, never secrets, so it is safe to read and back up.
+
+### Managing it
+
+```bash
+git_wrapper keys                       # list the rules, with source line
+git_wrapper keys whoami                # what THIS repo (and each submodule) would use, and why
+git_wrapper keys add github.com/minervarrbara ~/.ssh/id_ed25519_bara
+git_wrapper keys add github.com/minervarr --token     # prompts, input hidden
+git_wrapper keys rm  codeberg.org
+git_wrapper keys sync                  # import every IdentityFile from ~/.ssh/config
+git_wrapper keys install               # opt-in: register the git credential helper globally
+```
+
+### Automatic selection
+
+You often don't need to add anything. On each push:
+
+1. A matching rule wins.
+2. Otherwise, an unambiguous key in `~/.ssh` is used **and remembered**, so the
+   next run is instant and deterministic:
+
+   ```
+   ==> learned github.com/minervarr → ~/.ssh/id_ed25519_minervarr (saved)
+   ```
+
+   Keys are matched by filename: `id_ed25519_<owner>`, `id_ed25519_<host>`,
+   `id_ed25519_<host>_<owner>` (also `id_rsa_`, `id_ecdsa_`).
+3. If two or more keys match, it refuses to guess and tells you to use
+   `keys add`.
+
+Nothing is overridden if the repo already sets `core.sshCommand`, or if
+`~/.ssh/config` has a `Host` block for the remote — ssh keeps working exactly as
+before. HTTPS remotes are untouched unless a rule selects a token.
+
+For a chosen ssh key the wrapper runs git with
+`-c core.sshCommand="ssh -i '<key>' -o IdentitiesOnly=yes"`, so only that key is
+offered.
+
+### Forcing a key / disabling the learning
+
+```bash
+git_wrapper push --key ~/.ssh/id_ed25519_minervarr   # use this key (and record it)
+git_wrapper push --no-learn                          # use a detected key, don't save it
+```
+
+### HTTPS tokens (two accounts on one host)
+
+`keys add <match> --token` stores the token in `~/.config/git_wrapper/tokens`
+(mode `0600`) and selects it by `host/owner`, so `minervarr` and `minervarrbara`
+can each have their own token on `github.com`. When a rule selects a token, git
+is run with a per-invocation credential helper (`git_wrapper credential`) that
+answers git's `get`/`store`/`erase` — nothing global changes unless you run
+`keys install`, which also lets plain `git` use it.
+
+Behind a successful password prompt git calls `store`, which saves the token and
+records the rule automatically.

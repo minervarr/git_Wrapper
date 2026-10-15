@@ -74,5 +74,34 @@ writes `__main__.py` itself), `build --dry-run` on this machine (no
 cmake/ninja/g++ installed) prints the expected commands, and `build` fails with
 the single missing-toolchain message.
 
-## Phase 5 — ideas, not committed
-Nothing yet. Add future work here as it comes up.
+## Phase 5 — done
+Per-remote credentials: `push`/`save` now choose the ssh key or https token from
+the remote itself, for the parent and every submodule.
+
+- New C++ modules: `forge` (URL parsing), `credstore` (`credentials.conf` rules),
+  `secrets` (0600 token file), `ssh_identity` (candidate discovery +
+  `core.sshCommand`), `resolve` (the single decision point), `credhelper` (git's
+  credential protocol), `keyscmd` (the `keys` subcommand). `process.h` grew
+  `homeDir`/`configDir`/`pathExists`/`makeDirs`/`restrictFilePerms`/
+  `selfExePath`/`readSecret`/`toSshPath` on both platforms; `util` grew
+  `shellQuote` and `globMatch`.
+- Rules map `host` or `host/owner` (globs allowed) to a key/token; an
+  unambiguous first-seen `~/.ssh` key is learned and saved. A repo's own
+  `core.sshCommand` and matching `~/.ssh/config` Host blocks are never
+  overridden.
+- CLI: `git_wrapper keys [list|add|rm|sync|whoami|install]`, `push/save --key`,
+  `--no-learn`, and the internal `credential` verb.
+- Tests: `tests/forge_test.cc` (parsing, matching, quoting) built as
+  `git_wrapper_tests`, run with `ctest`.
+
+Verified on Linux against scratch repos and a local bare remote: commit identity
+still forced, normal push unaffected, a GitHub‑named key auto-learned and then
+injected (a stub `ssh` recorded `-i <key> -o IdentitiesOnly=yes`), `~/.ssh/config`
+and `core.sshCommand` respected, `keys sync`/`keys install`/token `store`→`get`
+round-trips working. Manifest version bumped to 0.2.0.
+
+## Phase 6 — ideas, not committed
+- Secret backends other than the plaintext 0600 file (OS keychain / libsecret).
+- A `--explain`/dry-run on `push` that prints identity decisions before pushing.
+- Wildcard-aware secret lookup so a `github.com/*` token rule works without a
+  per-owner entry.

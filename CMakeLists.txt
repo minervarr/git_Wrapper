@@ -40,21 +40,46 @@ add_executable(git_wrapper
     src/main.cc
     src/util.cc
     src/sanitize.cc
+    src/forge.cc
+    src/credstore.cc
+    src/secrets.cc
+    src/ssh_identity.cc
+    src/resolve.cc
+    src/credhelper.cc
+    src/keyscmd.cc
     src/repo.cc
     src/commands.cc
 )
 
 if(WIN32)
-    target_sources(git_wrapper PRIVATE src/platform/windows/process_win.cc)
+    set(GIT_WRAPPER_PLATFORM_SOURCE src/platform/windows/process_win.cc)
 else()
-    target_sources(git_wrapper PRIVATE src/platform/linux/process_posix.cc)
+    set(GIT_WRAPPER_PLATFORM_SOURCE src/platform/linux/process_posix.cc)
 endif()
+target_sources(git_wrapper PRIVATE ${GIT_WRAPPER_PLATFORM_SOURCE})
 
 target_include_directories(git_wrapper PRIVATE src ${CMAKE_BINARY_DIR}/generated)
 target_compile_features(git_wrapper PRIVATE cxx_std_17)
 if(MSVC)
     target_compile_options(git_wrapper PRIVATE /utf-8)
 endif()
+
+# Unit tests for the pure credential-resolution logic (URL parsing, rule
+# matching, shell quoting). No toolchain or network needed; run with `ctest`.
+enable_testing()
+add_executable(git_wrapper_tests
+    tests/forge_test.cc
+    src/util.cc
+    src/forge.cc
+    src/credstore.cc
+    ${GIT_WRAPPER_PLATFORM_SOURCE}
+)
+target_include_directories(git_wrapper_tests PRIVATE src)
+target_compile_features(git_wrapper_tests PRIVATE cxx_std_17)
+if(MSVC)
+    target_compile_options(git_wrapper_tests PRIVATE /utf-8)
+endif()
+add_test(NAME git_wrapper_tests COMMAND git_wrapper_tests)
 
 # Drop the exe at the build root so it's easy to find / add to PATH.
 set_target_properties(git_wrapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

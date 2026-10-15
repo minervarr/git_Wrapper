@@ -1,14 +1,17 @@
 #include "commands.h"
 #include "config.h"
+#include "credstore.h"
 #include "process.h"
 #include "repo.h"
+#include "resolve.h"
 #include "sanitize.h"
 #include <cstdio>
 #include <fstream>
 
 // Pushing over HTTPS otherwise prompts for a username/token on every push.
 // `store` matches the user's explicit choice; never overrides a helper
-// they've already configured (e.g. libsecret).
+// they've already configured (e.g. libsecret). Per-remote rules in
+// credentials.conf reset this helper for their own invocation only.
 static void ensureCredentialCaching() {
     std::string helper = gitCapture("config --global --get credential.helper");
     if (!helper.empty()) return;
@@ -61,11 +64,12 @@ int doCommit(const std::string& rawMsg) {
 // "commits ahead" skip check both compare against origin/<branch>; if that ref
 // is stale (e.g. after a local history rewrite) the push is wrongly rejected
 // as "stale info" or the submodule is wrongly skipped. A fetch fixes both.
-static void fetchRepo(const std::string& dir) {
+static void fetchRepo(const std::string& dir, const std::vector<std::string>& creds) {
     std::string branch = currentBranch(dir);
     if (branch.empty() || branch == "HEAD") return;
     std::vector<std::string> args;
     if (!dir.empty()) { args.push_back("-C"); args.push_back(dir); }
+    for (const auto& c : creds) args.push_back(c);
     args.push_back("fetch");
     args.push_back("--quiet");
     args.push_back("origin");
@@ -73,7 +77,8 @@ static void fetchRepo(const std::string& dir) {
     git(args);  // best-effort: if it fails (offline / no origin), the push reports it
 }
 
-static int pushRepo(const std::string& dir, bool force) {
+static int pushRepo(const std::string& dir, bool force,
+                    const std::vector<std::string>& creds) {
     std::string label = dir.empty() ? "this repo" : dir;
     std::string branch = currentBranch(dir);
     if (branch.empty() || branch == "HEAD") {
@@ -82,6 +87,7 @@ static int pushRepo(const std::string& dir, bool force) {
     }
     std::vector<std::string> args;
     if (!dir.empty()) { args.push_back("-C"); args.push_back(dir); }
+    for (const auto& c : creds) args.push_back(c);
     args.push_back("push");
     args.push_back("-u");
     args.push_back("origin");
@@ -92,9 +98,16 @@ static int pushRepo(const std::string& dir, bool force) {
     return git(args);
 }
 
-int doPush(bool force) {
+int doPush(bool force, const std::string& forcedKey, bool learn) {
     ensureCredentialCaching();
-    fetchRepo("");
+    CredStore store = CredStore::load();
+    ResolveOptions opt;
+    opt.forcedKey = forcedKey;
+    opt.learn = learn;
+
+    Resolved parent = resolveForRepo("", store, opt);
+    if (!parent.note.empty()) printf("==> %s\n", parent.note.c_str());
+    fetchRepo("", parent.args);
     if (!verifyNoTrailers("")) return 3;
 
     // Submodules first, but only the ones that actually have something to push
@@ -105,18 +118,20 @@ int doPush(bool force) {
             printf("    %s: detached (pinned) — skipping\n", s.c_str());
             continue;
         }
-        fetchRepo(s);
+        Resolved sub = resolveForRepo(s, store, opt);
+        if (!sub.note.empty()) printf("    %s\n", sub.note.c_str());
+        fetchRepo(s, sub.args);
         if (commitsAhead(s) == 0) {
             printf("    %s: nothing to push\n", s.c_str());
             continue;
         }
         if (!verifyNoTrailers(s)) return 3;
-        int rc = pushRepo(s, force);
+        int rc = pushRepo(s, force, sub.args);
         if (rc != 0) {
             fprintf(stderr, "error: submodule %s push failed (rc=%d) — aborting before parent.\n",
                     s.c_str(), rc);
             return rc;
         }
     }
-    return pushRepo("", force);
+    return pushRepo("", force, parent.args);
 }

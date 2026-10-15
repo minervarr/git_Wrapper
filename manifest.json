@@ -1,7 +1,7 @@
 {
   "name": "git_wrapper",
-  "version": "0.1.0",
-  "description": "An error-proof front-end for `git commit`/`git push`: forces a single commit identity and pushes submodules before their parent.",
+  "version": "0.2.0",
+  "description": "An error-proof front-end for `git commit`/`git push`: forces a single commit identity, pushes submodules before their parent, and picks the right ssh key or https token per remote.",
   "language": "C++17",
   "platforms": ["windows", "linux"],
   "build": {

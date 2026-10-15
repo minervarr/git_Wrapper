@@ -9,15 +9,21 @@
 //   git_wrapper commit "<message>"            stage everything + commit as nava
 //   git_wrapper push   [--force]              push submodules first, then this repo
 //   git_wrapper save   "<message>" [--force]  commit, then push
+//   git_wrapper keys   ...                    which key/token for which remote
 //
 // --force maps to --force-with-lease (refuses to overwrite remote work you have
-// not seen locally). Run it from anywhere inside the repository.
+// not seen locally). --key forces an ssh identity; --no-learn stops the
+// automatic recording of a first-seen key. Run it from anywhere inside the
+// repository.
 
 #include "commands.h"
 #include "config.h"
+#include "credhelper.h"
+#include "keyscmd.h"
 #include "version.h"
 #include <cstdio>
 #include <string>
+#include <vector>
 
 static void usage() {
     printf(
@@ -25,9 +31,11 @@ static void usage() {
         "  git_wrapper commit \"<message>\"           stage all + commit as nava\n"
         "  git_wrapper push  [--force]              push submodules first, then this repo\n"
         "  git_wrapper save  \"<message>\" [--force]  commit, then push\n"
+        "  git_wrapper keys  [list|add|rm|sync|whoami|install]\n"
         "  git_wrapper version                      print the version\n\n"
         "Identity is always forced to %s <%s>; Co-Authored-By / Claude trailers\n"
-        "are stripped from the message. --force uses --force-with-lease.\n",
+        "are stripped from the message. --force uses --force-with-lease.\n"
+        "The ssh key / https token is chosen per remote (see `git_wrapper keys`).\n",
         kName, kEmail);
 }
 
@@ -35,11 +43,31 @@ int main(int argc, char** argv) {
     if (argc < 2) { usage(); return 2; }
     std::string cmd = argv[1];
 
+    // Internal: git invokes us as a credential helper.
+    if (cmd == "credential") {
+        if (argc < 3) { fprintf(stderr, "error: `credential` needs an operation\n"); return 2; }
+        return credentialHelper(argv[2]);
+    }
+    if (cmd == "keys") {
+        std::vector<std::string> args;
+        for (int i = 2; i < argc; i++) args.push_back(argv[i]);
+        return keysCommand(args);
+    }
+
     bool force = false;
+    bool learn = true;
+    std::string key;
     std::string msg;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "--force" || a == "-f") { force = true; continue; }
+        if (a == "--no-learn") { learn = false; continue; }
+        if (a == "--key") {
+            if (i + 1 >= argc) { fprintf(stderr, "error: `--key` needs a path\n"); return 2; }
+            key = argv[++i];
+            continue;
+        }
+        if (a.rfind("--key=", 0) == 0) { key = a.substr(6); continue; }
         if (!msg.empty()) msg += " ";
         msg += a;
     }
@@ -49,13 +77,13 @@ int main(int argc, char** argv) {
         return doCommit(msg);
     }
     if (cmd == "push") {
-        return doPush(force);
+        return doPush(force, key, learn);
     }
     if (cmd == "save") {
         if (msg.empty()) { fprintf(stderr, "error: `save` needs a message\n"); return 2; }
         int rc = doCommit(msg);
         if (rc != 0) return rc;
-        return doPush(force);
+        return doPush(force, key, learn);
     }
     if (cmd == "help" || cmd == "-h" || cmd == "--help") { usage(); return 0; }
     if (cmd == "version" || cmd == "-v" || cmd == "--version") {
